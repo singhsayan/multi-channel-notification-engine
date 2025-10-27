@@ -207,7 +207,7 @@ It emphasizes performance, reliability, extensibility, and maintainability throu
 
 ---
 
-#### **Modular Design Advantage**
+### **Modular Design Advantage**
 This modular interaction ensures **easy extensibility** — new notification channels or decorators can be added without modifying existing code, supporting maintainability and scalability of the system.
 ---
 ### **Output**
