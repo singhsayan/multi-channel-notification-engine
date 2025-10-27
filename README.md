@@ -72,8 +72,8 @@ It emphasizes performance, reliability, extensibility, and maintainability throu
 `GET /FetchUserData`
 ```json
 {
-  "id": "12345",
-  "name": "John Doe",
+  "id": "6767",
+  "name": "Sayan Singh",
   "notificationPreferences": {
     "email": true,
     "push": false
@@ -85,10 +85,10 @@ It emphasizes performance, reliability, extensibility, and maintainability throu
   {
   "notifications": [
     {
-      "id": "notif123",
-      "type": "post_like",
-      "message": "John liked your post",
-      "timestamp": "2024-06-12T12:00:00Z"
+      "id": "notif567",
+      "type": "post_liked",
+      "message": "abc liked your post",
+      "timestamp": "2025-10-12T12:00:00Z"
     }
   }
 }
@@ -98,10 +98,10 @@ It emphasizes performance, reliability, extensibility, and maintainability throu
 {
   "notifications": [
     {
-      "id": "notif124",
+      "id": "notif567",
       "type": "shipment",
-      "message": "Your order has shipped",
-      "timestamp": "2024-06-12T15:00:00Z",
+      "message": "Your order has been shipped",
+      "timestamp": "2025-10-12T15:00:00Z",
       "readStatus": "read"
     }
   ]
