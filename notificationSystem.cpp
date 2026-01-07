@@ -2,22 +2,21 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <memory>
 
 using namespace std;
 
 class INotification {
 public:
     virtual string getContent() const = 0;
-    virtual ~INotification() {}
+    virtual ~INotification() = default;
 };
 
 class SimpleNotification : public INotification {
 private:
     string text;
 public:
-    SimpleNotification(const string& msg) {
-        text = msg;
-    }
+    SimpleNotification(const string& msg) : text(msg) {}
     string getContent() const override {
         return text;
     }
@@ -25,20 +24,17 @@ public:
 
 class INotificationDecorator : public INotification {
 protected:
-    INotification* notification;
+    unique_ptr<INotification> notification;
 public:
-    INotificationDecorator(INotification* n) {
-        notification = n;
-    }
-    virtual ~INotificationDecorator() {
-        delete notification;
-    }
+    INotificationDecorator(unique_ptr<INotification> n)
+        : notification(std::move(n)) {}
 };
 
 class TimestampDecorator : public INotificationDecorator {
 public:
-    TimestampDecorator(INotification* n) : INotificationDecorator(n) { }
-    
+    TimestampDecorator(unique_ptr<INotification> n)
+        : INotificationDecorator(std::move(n)) {}
+
     string getContent() const override {
         return "[2025-10-26 10:45:00] " + notification->getContent();
     }
@@ -48,144 +44,134 @@ class SignatureDecorator : public INotificationDecorator {
 private:
     string signature;
 public:
-    SignatureDecorator(INotification* n, const string& sig) : INotificationDecorator(n) {
-        signature = sig;
-    }
+    SignatureDecorator(unique_ptr<INotification> n, string sig)
+        : INotificationDecorator(std::move(n)), signature(std::move(sig)) {}
+
     string getContent() const override {
         return notification->getContent() + "\n-- " + signature + "\n\n";
     }
 };
 
+// Observer Interfaces
 class IObserver {
 public:
     virtual void update() = 0;
-    virtual ~IObserver() {}
+    virtual ~IObserver() = default;
 };
 
 class IObservable {
 public:
-    virtual void addObserver(IObserver* observer) = 0;
-    virtual void removeObserver(IObserver* observer) = 0;
+    virtual void addObserver(shared_ptr<IObserver> observer) = 0;
+    virtual void removeObserver(shared_ptr<IObserver> observer) = 0;
     virtual void notifyObservers() = 0;
+    virtual ~IObservable() = default;
 };
 
+// Observable
 class NotificationObservable : public IObservable {
 private:
-    vector<IObserver*> observers;
-    INotification* currentNotification;
-public:
-    NotificationObservable() { 
-        currentNotification = nullptr; 
-    }
+    vector<weak_ptr<IObserver>> observers;
+    shared_ptr<INotification> currentNotification;
 
-    void addObserver(IObserver* obs) override {
+public:
+    void addObserver(shared_ptr<IObserver> obs) override {
         observers.push_back(obs);
     }
 
-    void removeObserver(IObserver* obs) override {
-        observers.erase(remove(observers.begin(), observers.end(), obs), observers.end());
+    void removeObserver(shared_ptr<IObserver> obs) override {
+        observers.erase(
+            remove_if(
+                observers.begin(),
+                observers.end(),
+                [&](weak_ptr<IObserver>& w) {
+                    auto sp = w.lock();
+                    return !sp || sp == obs;
+                }),
+            observers.end()
+        );
     }
 
     void notifyObservers() override {
-        for (unsigned int i = 0; i < observers.size(); i++) {
-            observers[i]->update();
+        for (auto &w : observers) {
+            if (auto obs = w.lock()) {
+                obs->update();
+            }
         }
     }
 
-    void setNotification(INotification* notification) {
-        if (currentNotification != nullptr) {
-            delete currentNotification;
-        }
-        currentNotification = notification;
+    void setNotification(shared_ptr<INotification> notification) {
+        currentNotification = std::move(notification);
         notifyObservers();
     }
 
-    INotification* getNotification() {
+    shared_ptr<INotification> getNotification() {
         return currentNotification;
     }
 
     string getNotificationContent() {
         return currentNotification->getContent();
     }
-
-    ~NotificationObservable() {
-        if (currentNotification != NULL) {
-            delete currentNotification;
-        }
-    }
 };
 
+// Singleton NotificationService
 class NotificationService {
 private:
-    NotificationObservable* observable;
-    static NotificationService* instance;
-    vector<INotification*> notifications;
+    NotificationObservable observable;
+    vector<shared_ptr<INotification>> notifications;
 
-    NotificationService() {
-        observable = new NotificationObservable();
-    }
+    NotificationService() = default;
 
 public:
-    static NotificationService* getInstance() {
-        if(instance == nullptr) {
-            instance = new NotificationService();
-        }
+    static NotificationService& getInstance() {
+        static NotificationService instance;
         return instance;
     }
 
     NotificationObservable* getObservable() {
-        return observable;
+        return &observable;
     }
 
-    void sendNotification(INotification* notification) {
+    void sendNotification(shared_ptr<INotification> notification) {
         notifications.push_back(notification);
-        observable->setNotification(notification);
-    }
-
-    ~NotificationService() {
-        delete observable;
+        observable.setNotification(notification);
     }
 };
 
-NotificationService* NotificationService::instance = nullptr;
-
-class Logger : public IObserver {
+// Logger
+class Logger : public IObserver, public enable_shared_from_this<Logger> {
 private:
-    NotificationObservable* notificationObservable;
+    NotificationObservable* observable;
 
 public:
     Logger() {
-       this->notificationObservable = NotificationService::getInstance()->getObservable();
-       notificationObservable->addObserver(this);
+        observable = &NotificationService::getInstance().getObservable()[0];
     }
 
-    Logger(NotificationObservable* observable) {
-        this->notificationObservable = observable;
-        notificationObservable->addObserver(this);
+    void subscribe() {
+        observable->addObserver(shared_from_this());
     }
 
-    void update() {
-        cout << "\n[Logger] New Notification Logged:\n" 
-             << notificationObservable->getNotificationContent();
+    void update() override {
+        cout << "\n[Logger] New Notification Logged:\n"
+             << observable->getNotificationContent();
     }
 };
 
+// Strategy Interface
 class INotificationStrategy {
-public:    
-    virtual void sendNotification(string content) = 0;
+public:
+    virtual void sendNotification(const string& content) = 0;
+    virtual ~INotificationStrategy() = default;
 };
 
 class EmailStrategy : public INotificationStrategy {
 private:
     string emailId;
 public:
-    EmailStrategy(string emailId) {
-        this->emailId = emailId;
-    }
+    EmailStrategy(string emailId) : emailId(std::move(emailId)) {}
 
-    void sendNotification(string content) override {
-        cout << "\n[Email] Sent to " << emailId << ":\n" 
-             << content;
+    void sendNotification(const string& content) override {
+        cout << "\n[Email] Sent to " << emailId << ":\n" << content;
     }
 };
 
@@ -193,69 +179,67 @@ class SMSStrategy : public INotificationStrategy {
 private:
     string mobileNumber;
 public:
-    SMSStrategy(string mobileNumber) {
-        this->mobileNumber = mobileNumber;
-    }
+    SMSStrategy(string mobileNumber) : mobileNumber(std::move(mobileNumber)) {}
 
-    void sendNotification(string content) override {
-        cout << "\n[SMS] Sent to " << mobileNumber << ":\n" 
-             << content;
+    void sendNotification(const string& content) override {
+        cout << "\n[SMS] Sent to " << mobileNumber << ":\n" << content;
     }
 };
 
 class PopUpStrategy : public INotificationStrategy {
 public:
-    void sendNotification(string content) override {
-        cout << "\n[Popup] Notification displayed:\n" 
-             << content;
+    void sendNotification(const string& content) override {
+        cout << "\n[Popup] Notification displayed:\n" << content;
     }
 };
 
-class NotificationEngine : public IObserver {
+// Engine
+class NotificationEngine : public IObserver, public enable_shared_from_this<NotificationEngine> {
 private:
-    NotificationObservable* notificationObservable;
-    vector<INotificationStrategy*> notificationStrategies;
+    NotificationObservable* observable;
+    vector<unique_ptr<INotificationStrategy>> strategies;
 
 public:
     NotificationEngine() {
-        this->notificationObservable = NotificationService::getInstance()->getObservable();
-        notificationObservable->addObserver(this);
+        observable = NotificationService::getInstance().getObservable();
     }
 
-    NotificationEngine(NotificationObservable* observable) {
-        this->notificationObservable = observable;
+    void subscribe() {
+        observable->addObserver(shared_from_this());
     }
 
-    void addNotificationStrategy(INotificationStrategy* ns) {
-        this->notificationStrategies.push_back(ns);
+    void addNotificationStrategy(unique_ptr<INotificationStrategy> ns) {
+        strategies.push_back(std::move(ns));
     }
 
-    void update() {
-        string notificationContent = notificationObservable->getNotificationContent();
-        for(const auto notificationStrategy : notificationStrategies) {
-            notificationStrategy->sendNotification(notificationContent);
-        }
+    void update() override {
+        string content = observable->getNotificationContent();
+        for (auto &s : strategies) s->sendNotification(content);
     }
 };
 
 int main() {
-    NotificationService* notificationService = NotificationService::getInstance();
+    auto& notificationService = NotificationService::getInstance();
 
-    Logger* logger = new Logger();
+    auto logger = make_shared<Logger>();
+    logger->subscribe();
 
-    NotificationEngine* notificationEngine = new NotificationEngine();
+    auto engine = make_shared<NotificationEngine>();
+    engine->subscribe();
 
-    notificationEngine->addNotificationStrategy(new EmailStrategy("abc@outlook.com"));
-    notificationEngine->addNotificationStrategy(new SMSStrategy("+353 8743210"));
-    notificationEngine->addNotificationStrategy(new PopUpStrategy());
+    engine->addNotificationStrategy(make_unique<EmailStrategy>("abc@outlook.com"));
+    engine->addNotificationStrategy(make_unique<SMSStrategy>("+353 8743210"));
+    engine->addNotificationStrategy(make_unique<PopUpStrategy>());
 
-    INotification* notification = new SimpleNotification("Your internship confirmation has been approved!");
-    notification = new TimestampDecorator(notification);
-    notification = new SignatureDecorator(notification, "Microsoft Dublin HR Team");
-    
-    notificationService->sendNotification(notification);
+    shared_ptr<INotification> notification =
+        make_shared<SignatureDecorator>(
+            make_unique<TimestampDecorator>(
+                make_unique<SimpleNotification>("Your internship confirmation has been approved!")
+            ),
+            "Microsoft Dublin HR Team"
+        );
 
-    delete logger;
-    delete notificationEngine;
+    notificationService.sendNotification(notification);
+
     return 0;
 }
