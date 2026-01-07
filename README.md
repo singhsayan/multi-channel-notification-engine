@@ -1,8 +1,9 @@
 # Notification System — Architecture & Design Documentation
 
 ## Table of Contents
-1. [Overview](#overview)  
-2. [High-Level Design (HLD)](#high-level-design-hld)  
+1. [Overview](#overview)
+2. [What is Implemented vs Conceptual (HLD vs LLD)](#HLD-vs-LLD)
+3. [High-Level Design (HLD)](#high-level-design-hld)  
    - [Functional Requirements](#functional-requirements)
    - [Non-Functional Requirements](#non-functional-requirements)
    - [Capacity Estimation and Constraints](#capacity-estimation-and-constraints)
@@ -11,7 +12,7 @@
    - [Workflow](#workflow)
    - [Optimizations](#optimizations)
    - [Rate Limiting and Retry Mechanism](#rate-limiting-and-retry-mechanism)
-3. [Low-Level Design (LLD)](#low-level-design-lld)
+4. [Low-Level Design (LLD)](#low-level-design-lld)
    - [Class Diagram](#class-diagram)
    - [Design Patterns Used](#design-patterns-used)
    - [Component Interactions](#component-interactions)
@@ -24,6 +25,28 @@ This project implements a scalable, modular, and fault-tolerant **Notification S
 It emphasizes performance, reliability, extensibility, and maintainability through robust architectural design and the use of appropriate design patterns.
 
 ---
+
+## HLD vs LLD
+This project intentionally separates High-Level Design (HLD) and Low-Level Design (LLD).
+
+**HLD (Conceptual — Architecture Level)**
+ - Describes how a real-world notification platform could be built, including:
+	•	Kafka / RabbitMQ for queues
+	•	Redis for caching
+	•	Database replication
+	•	Monitoring (Prometheus / Grafana / Sentry)
+	•	External providers (APNS, FCM, Twilio, SendGrid)
+
+These components are discussed for architectural understanding, not fully implemented in code.
+
+**LLD (Implemented — Code Level)**
+ - The C++ implementation focuses on the core event-driven design and design patterns:
+	•	Observer → notification event propagation
+	•	Strategy → pluggable delivery channels (Email/SMS/Popup)
+	•	Decorator → timestamps + signatures
+	•	Singleton → shared notification service
+
+The goal is to model how notifications flow internally, not to build production infrastructure.
 
 ## High-Level Design (HLD)
 
