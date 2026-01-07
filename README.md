@@ -26,7 +26,7 @@ It emphasizes performance, reliability, extensibility, and maintainability throu
 
 ---
 
-## HLD vs LLD
+## What is Implemented vs Conceptual (HLD vs LLD)
 This project intentionally separates High-Level Design (HLD) and Low-Level Design (LLD).
 
 **HLD (Conceptual — Architecture Level)**
