@@ -2,7 +2,7 @@
 
 ## Table of Contents
 1. [Overview](#overview)
-2. [What is Implemented vs Conceptual (HLD vs LLD)](#HLD-vs-LLD)
+2. [What is Implemented vs Conceptual (HLD vs LLD)](#What-is-Implemented-vs-Conceptual(HLD-vs-LLD))
 3. [High-Level Design (HLD)](#high-level-design-hld)  
    - [Functional Requirements](#functional-requirements)
    - [Non-Functional Requirements](#non-functional-requirements)
