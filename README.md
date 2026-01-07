@@ -31,20 +31,20 @@ This project intentionally separates High-Level Design (HLD) and Low-Level Desig
 
 **HLD (Conceptual — Architecture Level)**
  - Describes how a real-world notification platform could be built, including:
-	 - •	Kafka / RabbitMQ for queues
-	 - •	Redis for caching
-	 - •	Database replication
-	 - •	Monitoring (Prometheus / Grafana / Sentry)
-	 - •	External providers (APNS, FCM, Twilio, SendGrid)
+	 - Kafka / RabbitMQ for queues
+	 - Redis for caching
+	 - Database replication
+	 - Monitoring (Prometheus / Grafana / Sentry)
+	 - External providers (APNS, FCM, Twilio, SendGrid)
 
 These components are discussed for architectural understanding, not fully implemented in code.
 
 **LLD (Implemented — Code Level)**
  - The C++ implementation focuses on the core event-driven design and design patterns:
-	 - •	Observer → notification event propagation
-	 - •	Strategy → pluggable delivery channels (Email/SMS/Popup)
-	 - •	Decorator → timestamps + signatures
-	 - •	Singleton → shared notification service
+	 - Observer → notification event propagation
+	 - Strategy → pluggable delivery channels (Email/SMS/Popup)
+	 - Decorator → timestamps + signatures
+	 - Singleton → shared notification service
 
 The goal is to model how notifications flow internally, not to build production infrastructure.
 
